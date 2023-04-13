@@ -1,3 +1,5 @@
+# Project quake-log
+
 ## run the report of kills by means
 
 - go to folder scripts/report/killByMeans
