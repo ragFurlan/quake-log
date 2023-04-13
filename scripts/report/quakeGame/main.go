@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-
 	quakeLogController "quakelog/internal/controllers"
 	quakeLog "quakelog/internal/platform/http"
 	quakeLogUseCase "quakelog/internal/usecase/quakeLog"
@@ -24,12 +23,12 @@ func main() {
 	usecase := quakeLogUseCase.NewQuakeLogUsecase(log)
 	controller = quakeLogController.NewQuakeLog(usecase)
 
-	groupedMatch, err := controller.GroupedMatch()
+	groupByGame, err := controller.GroupByGame()
 	if err != nil {
 		fmt.Println("error on grouped match")
 	}
 
-	e, err := json.Marshal(groupedMatch)
+	e, err := json.Marshal(groupByGame)
 	if err != nil {
 		fmt.Println(err)
 		return

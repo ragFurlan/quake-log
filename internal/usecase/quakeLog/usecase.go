@@ -2,16 +2,16 @@ package quakeLogUsecase
 
 import (
 	"fmt"
-	"regexp"
-	"strings"
-
 	entity "quakelog/internal/entity"
 	quakeLog "quakelog/internal/platform/http"
+	"regexp"
+	"sort"
+	"strings"
 )
 
 type QuakeLogUsecase interface {
 	GroupedByTypeOfDeath() (map[string]entity.QuakeLogKills, error)
-	GroupedMatch() (map[string]entity.QuakeLog, error)
+	GroupByGame() (map[string]entity.QuakeLog, error)
 }
 
 type quakeLogUsecase struct {
@@ -57,40 +57,62 @@ func getKillsByMeans(game string) map[string]int {
 	return killsByMeans
 }
 
-func (ref quakeLogUsecase) GroupedMatch() (map[string]entity.QuakeLog, error) {
+func (ref quakeLogUsecase) GroupByGame() (map[string]entity.QuakeLog, error) {
 	log, err := ref.quakeLog.Get()
 	if err != nil {
 		return map[string]entity.QuakeLog{}, err
 	}
 
-	quakeLogsMatch := make(map[string]entity.QuakeLog)
+	var quakeLogsMatch []entity.QuakeLog
 
 	games := strings.Split(log, "InitGame")
-	for key, game := range games {
-		players := getPlayers(game)
+	for _, game := range games {
+		players := ref.getPlayers(game)
 		if len(players) == 0 {
 			continue
 		}
 
 		kills := make(map[string]int, len(players))
 		for _, player := range players {
-			kills[player] = getKillsByPlayer(game, player)
+			kills[player] = ref.getKillsByPlayer(game, player)
 		}
 
-		groupedMatch := entity.QuakeLog{
+		groupByGame := entity.QuakeLog{
 			Players:    players,
 			TotalKills: strings.Count(game, "killed"),
 			Kills:      kills,
 		}
 
-		nameOfGame := fmt.Sprintf("game-%v", key)
-		quakeLogsMatch[nameOfGame] = groupedMatch
+		quakeLogsMatch = append(quakeLogsMatch, groupByGame)
+
 	}
 
-	return quakeLogsMatch, err
+	return ref.orderQuakeLogByTotalKills(quakeLogsMatch), err
 }
 
-func getKillsByPlayer(game string, player string) int {
+func (ref quakeLogUsecase) orderQuakeLogByTotalKills(quakeLogsMatch []entity.QuakeLog) map[string]entity.QuakeLog {
+	sort.Slice(quakeLogsMatch, func(i, j int) bool {
+		return quakeLogsMatch[i].TotalKills > quakeLogsMatch[j].TotalKills
+	})
+
+	quakeLogsMap := make(map[string]entity.QuakeLog)
+	for key, quakeLog := range quakeLogsMatch {
+		quakeLogsMap[ref.getNameGame(key)] = quakeLog
+
+	}
+
+	return quakeLogsMap
+}
+
+func (ref quakeLogUsecase) getNameGame(key int) string {
+	if len(string(rune(key))) == 1 {
+		return fmt.Sprintf("game-0%v", key+1)
+	}
+
+	return fmt.Sprintf("game-%v", key+1)
+}
+
+func (ref quakeLogUsecase) getKillsByPlayer(game string, player string) int {
 	regexKill := regexp.MustCompile(fmt.Sprintf("Kill(.*)%s killed", player))
 	playerKillNumbers := regexKill.FindAllString(game, 99)
 
@@ -100,7 +122,7 @@ func getKillsByPlayer(game string, player string) int {
 	return len(playerKillNumbers) - len(playerWasKilledNumbers)
 }
 
-func getPlayers(game string) []string {
+func (ref quakeLogUsecase) getPlayers(game string) []string {
 	re := regexp.MustCompile(`n\\([^\\]+)`)
 	quakeMatch := re.FindAllString(game, 99)
 
@@ -110,7 +132,7 @@ func getPlayers(game string) []string {
 
 	players := quakeMatch[1:]
 
-	players = removeDuplicates(players)
+	players = ref.removeDuplicates(players)
 	for i := 0; i < len(players); i++ {
 		player := players[i]
 		players[i] = player[2:]
@@ -120,7 +142,7 @@ func getPlayers(game string) []string {
 
 }
 
-func removeDuplicates(arr []string) []string {
+func (ref quakeLogUsecase) removeDuplicates(arr []string) []string {
 	unique := make(map[string]bool)
 	for _, val := range arr {
 		unique[val] = true

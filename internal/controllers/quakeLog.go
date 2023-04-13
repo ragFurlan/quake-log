@@ -3,11 +3,10 @@ package quakeLog
 import (
 	entity "quakelog/internal/entity"
 	usecase "quakelog/internal/usecase/quakeLog"
-
 )
 
 type QuakeLog interface {
-	GroupedMatch() (map[string]entity.QuakeLog, error)
+	GroupByGame() (map[string]entity.QuakeLog, error)
 	GroupedByTypeOfDeath() (map[string]entity.QuakeLogKills, error)
 }
 
@@ -19,8 +18,8 @@ func NewQuakeLog(quakeLogUseCase usecase.QuakeLogUsecase) *quakeLog {
 	return &quakeLog{quakeLogUseCase: quakeLogUseCase}
 }
 
-func (ref quakeLog) GroupedMatch() (map[string]entity.QuakeLog, error) {
-	quake, err := ref.quakeLogUseCase.GroupedMatch()
+func (ref quakeLog) GroupByGame() (map[string]entity.QuakeLog, error) {
+	quake, err := ref.quakeLogUseCase.GroupByGame()
 	if err != nil {
 		return map[string]entity.QuakeLog{}, err
 	}
